@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DryGYE | Rain-aware route comparison</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header><div><span class="eyebrow">GUAYAQUIL · PILOT</span><h1>DryGYE</h1><p>Compare routes under heavy rain scenarios.</p></div><span id="modeBadge" class="sim-badge">SIMULATION</span></header>
+  <main>
+    <section class="panel controls">
+      <h2>Conditions source</h2>
+      <label for="dataMode">Route conditions</label>
+      <select id="dataMode"><option value="simulation">Simulation scenario</option><option value="forecast">Live point forecast</option></select>
+      <label for="scenario">Rain and tide conditions</label>
+      <select id="scenario"><option value="normal">Normal</option><option value="heavy_rain">Heavy rain</option><option value="heavy_rain_high_tide" selected>Heavy rain + high tide</option></select>
+      <div id="alert" class="alert red"><span id="level">RED ALERT</span><p><b id="rain">45 mm</b> rain / 24h · Tide <b id="tide">4.5 m</b></p><small id="conditionNote">Simulation scenario</small></div>
+      <h2>Point forecast</h2>
+      <div id="weatherStatus" class="weather-status">Loading Open-Meteo forecast…</div>
+      <div class="weather-totals"><span>Next 3 hours<strong id="rain3h">—</strong></span><span>Next 24 hours<strong id="rain24h">—</strong></span></div>
+      <canvas id="rainChart" height="104" aria-label="Hourly precipitation forecast"></canvas>
+      <p id="weatherUpdated" class="hint">Forecast at Guayaquil city center · Open-Meteo</p>
+      <p class="hint">Forecast-mode routes use this city-center point as a proxy. Tide is excluded in forecast mode.</p>
+      <h2>Route comparison</h2>
+      <p class="hint">Click two points on the map: origin, then destination.</p>
+      <button id="routeButton" disabled>Choose two points</button>
+      <div id="routes" class="route-results"></div>
+      <p class="disclaimer">Relative heuristic risk from a 30 m terrain model. Not an official warning or a guarantee of safe roads.</p>
+    </section>
+    <section id="map" aria-label="Map of Guayaquil"></section>
+  </main>
+  <footer>Weather scenarios are simulated · © OpenStreetMap contributors · Copernicus DEM GLO-30 · Tide reference: INOCAR</footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

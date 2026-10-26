@@ -1,0 +1,36 @@
+# DryGYE - conda environment (primary path).
+# Created by setup_env.bat / setup_env.ps1 / setup_env.sh. Manual alternative:
+#   conda env create -f environment.yml
+# Only conda-forge is used ("nodefaults") so no Anaconda Terms of Service prompt appears.
+# Keep this list in sync with requirements.txt (pip fallback).
+name: drygye
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  # Core scientific stack
+  - numpy
+  - pandas
+  - scipy
+  - networkx
+  # Geospatial: DEM, risk map, street network
+  - shapely>=2.0
+  - pyproj
+  - geopandas>=1.0
+  - rasterio
+  - osmnx>=2.0
+  - pysheds              # HAND (Height Above Nearest Drainage) from the DEM
+  # Visualisation
+  - matplotlib
+  - folium
+  # Data access + web app
+  - requests
+  - pdfplumber           # parse the INOCAR tide-table PDF
+  - flask
+  - python-dotenv
+  - pyyaml
+  # Dev tools
+  - pytest
+  - ipykernel
+  - pip
