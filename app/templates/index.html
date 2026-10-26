@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DryGYE | Rain-aware route comparison</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='leaflet.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header><div><span class="eyebrow">GUAYAQUIL · PILOT</span><h1>DryGYE</h1><p>Compare routes under heavy rain scenarios.</p></div><span id="modeBadge" class="sim-badge">SIMULATION</span></header>
+  <main>
+    <section class="panel controls">
+      <h2>Conditions source</h2>
+      <label for="dataMode">Route conditions</label>
+      <select id="dataMode"><option value="simulation">Simulation scenario</option><option value="forecast">Live point forecast</option></select>
+      <label for="scenario">Rain and tide conditions</label>
+      <select id="scenario"><option value="normal">Normal</option><option value="heavy_rain">Heavy rain</option><option value="heavy_rain_high_tide" selected>Heavy rain + high tide</option></select>
+      <div id="alert" class="alert red"><span id="level">RED ALERT</span><p><b id="rain">45 mm</b> rain / 24h · Tide <b id="tide">4.5 m</b></p><small id="conditionNote">Simulation scenario</small></div>
+      <h2>Point forecast</h2>
+      <div id="weatherStatus" class="weather-status">Loading Open-Meteo forecast…</div>
+      <div class="weather-totals"><span>Next 3 hours<strong id="rain3h">—</strong></span><span>Next 24 hours<strong id="rain24h">—</strong></span></div>
+      <canvas id="rainChart" height="104" aria-label="Hourly precipitation forecast"></canvas>
+      <p id="weatherUpdated" class="hint">Forecast at Guayaquil city center · Open-Meteo</p>
+      <p class="hint">Forecast routes use city-center rainfall and the INOCAR tide prediction when the table is available.</p>
+      <h2>Map layers</h2>
+      <label class="layer-toggle"><input type="checkbox" id="floodLayerToggle"> Municipal flood-prone reference zones</label>
+      <p class="hint">Historical and study-based polygons; not live flooding or road closures.</p>
+      <p class="hint">Select a street segment to view its source road type; direction data is unavailable.</p>
+      <h2>Route comparison</h2>
+      <p class="hint">Use the pilot trip or click two points close to the connected road layer.</p>
+      <button id="demoRouteButton" class="secondary">Load demo trip</button>
+      <button id="routeButton" disabled>Choose two points</button>
+      <div id="routes" class="route-results"></div>
+      <p class="disclaimer">Relative heuristic risk from a 30 m terrain model. Not an official warning or a guarantee of safe roads.</p>
+    </section>
+    <section id="map" aria-label="Map of Guayaquil"><div id="basemapStatus" class="map-status" hidden>Basemap tiles unavailable. Local pilot layers and routes remain available.</div></section>
+  </main>
+  <footer>Route scenario: simulation or point forecast · Road structure and flood-reference layer: Municipality of Guayaquil / MIMG · © OpenStreetMap contributors · Copernicus DEM GLO-30 · INOCAR tides</footer>
+  <script src="{{ url_for('static', filename='leaflet.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
