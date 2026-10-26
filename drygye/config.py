@@ -20,10 +20,13 @@ RISK_PATH = PROCESSED_DIR / "risk.tif"
 TIDES_CSV_PATH = PROCESSED_DIR / "tides.csv"
 GRAPH_PATH = PROCESSED_DIR / "road_graph.graphml"
 REPORTS_PATH = DATA_DIR / "reports.json"
+FLOOD_REFERENCE_PATH = PROCESSED_DIR / "flood_reference.geojson"
+ROAD_SOURCE_PATH = RAW_DIR / "municipal_roads_pilot.geojson"
 
 # --- Area ---
 # DEM bounds: (south, west, north, east) = (lat_min, lon_min, lat_max, lon_max)
 BBOX = (-2.400, -80.150, -1.950, -79.800)
+PILOT_BBOX = (-2.220, -79.940, -2.140, -79.860)
 CITY_CENTER = (-2.19, -79.89)
 TIMEZONE = "America/Guayaquil"
 

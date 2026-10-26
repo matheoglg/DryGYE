@@ -1,0 +1,15 @@
+{
+  "publisher": "Municipio de Guayaquil / MIMG ArcGIS public feature services",
+  "roads_service": "https://services7.arcgis.com/NWWHhu45fOJtCgG3/arcgis/rest/services/Estructura_vial_%C3%A1rea_urbana/FeatureServer",
+  "flood_reference_service": "https://services7.arcgis.com/NWWHhu45fOJtCgG3/arcgis/rest/services/Zonas_Inundables_GYE/FeatureServer",
+  "roads_features": 173,
+  "flood_zone_features": 206,
+  "pilot_bbox_south_west_north_east": [
+    -2.22,
+    -79.94,
+    -2.14,
+    -79.86
+  ],
+  "note": "Flood polygons are a municipal reference layer compiled from studies and historical events; they are not current street closures or ground-truth measurements.",
+  "reuse": "Public ArcGIS feature services; retain attribution and confirm applicable reuse terms."
+}

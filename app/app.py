@@ -1,4 +1,6 @@
 """DryGYE pilot web application."""
+import json
+
 from flask import Flask, jsonify, render_template, request
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -7,7 +9,7 @@ from drygye.alerts import SCENARIOS, current_state, forecast_state
 from drygye.routing import compare_routes
 from drygye.terrain import risk_geojson
 from drygye.weather import WeatherUnavailable, forecast_summary, get_forecast
-from drygye.config import TIMEZONE
+from drygye.config import FLOOD_REFERENCE_PATH, ROAD_SOURCE_PATH, TIMEZONE
 
 
 def _forecast_state():
@@ -49,6 +51,20 @@ def risk():
         return jsonify({"error": str(exc)}), 500
 
 
+@app.get("/api/reference/flood-zones")
+def reference_flood_zones():
+    if not FLOOD_REFERENCE_PATH.exists():
+        return jsonify({"error": "Municipal flood reference layer is not installed."}), 404
+    return jsonify(json.loads(FLOOD_REFERENCE_PATH.read_text(encoding="utf-8")))
+
+
+@app.get("/api/reference/roads")
+def reference_roads():
+    if not ROAD_SOURCE_PATH.exists():
+        return jsonify({"error": "Municipal pilot road layer is not installed."}), 404
+    return jsonify(json.loads(ROAD_SOURCE_PATH.read_text(encoding="utf-8")))
+
+
 @app.get("/api/weather")
 def weather():
     try:
@@ -76,7 +92,7 @@ def route():
     except KeyError:
         return jsonify({"error": "Provide from=lat,lon and to=lat,lon."}), 400
     except Exception as exc:
-        return jsonify({"error": str(exc), "hint": "Check the coordinates and internet access for OpenStreetMap."}), 503
+        return jsonify({"error": str(exc), "hint": "Choose points near the connected municipal pilot road layer."}), 503
 
 
 if __name__ == "__main__":

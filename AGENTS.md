@@ -154,7 +154,7 @@ Todo corre en local, en un solo proceso Flask. Sin base de datos: archivos en `d
 ```
  DEM (tif) --> terrain.py --> risk.tif (riesgo base 0..1)
                                   |
- OSM --> roads.py (grafo GraphML, riesgo por arista) <--+
+ roads municipales --> roads.py (grafo GraphML local, riesgo por arista) <--+
                                   |
  Open-Meteo --> weather.py --+    |
  INOCAR PDF --> tides.py ----+--> alerts.py (nivel + factor dinámico)
@@ -207,6 +207,16 @@ El equipo decide conjuntamente el alcance y cada persona debe poder explicar el 
 - La demo puede ejecutarse con los datos guardados si falla la conexión externa.
 - Al menos un integrante distinto de quien implementó cada módulo puede explicar cómo funciona.
 
+### Estado implementado para la demo (26-oct-2026)
+
+- La zona piloto usa una red vial pública del Municipio/MIMG guardada en `data/processed/road_graph.graphml` (3,915 nodos, 8,374 aristas en el grafo generado; fragmentada en componentes). La fuente descargada tiene 173 segmentos dentro del bbox piloto y no informa sentidos únicos: se asumen calles bidireccionales. El botón «Load demo trip» usa dos puntos del componente conectado y muestra cuánto se ajustaron al grafo.
+- Se pueden alternar 206 polígonos municipales de referencia de zonas inundables. Son antecedentes de estudios/eventos históricos, no cierres ni observaciones actuales. No se obtuvieron los 74 puntos vulnerables para validación.
+- La ruta demo, en «Heavy rain + high tide», produjo 2.843 km / 5.7 min para la más corta y 3.163 km / 6.3 min para menor costo estimado; riesgo medio 0.702 y 0.226 respectivamente. La alternativa aún incluye un segmento muy riesgoso y la interfaz avisa.
+- El parser de INOCAR generó 355 eventos para oct-dic de 2026; los cuatro eventos listados para el 26-oct coinciden con el PDF. El pronóstico conecta lluvia puntual Open-Meteo con la interpolación de marea INOCAR cuando hay cobertura temporal.
+- Chequeo espacial descriptivo (muestreo cada 10 píxeles): riesgo medio 0.461 dentro de los polígonos de referencia (n=157 celdas) y 0.252 fuera (n=18.899). No es validación independiente ni precisión del modelo.
+- Leaflet y sus recursos están guardados localmente; las calles, el raster, grafo y mareas permiten la demo de simulación sin internet. El fondo de teselas OpenStreetMap y el pronóstico fresco requieren internet; si faltan teselas, las capas locales siguen visibles.
+- La propuesta inglesa está en `docs/DryGYE_Proposal.pdf`. El proyecto no entrena ML: datos sintéticos sirven para simular escenarios y no validan predicción real.
+
 **Límites que deben aparecer en la propuesta y la interfaz:** el riesgo es una estimación heurística basada en datos disponibles; un DEM de aproximadamente 30 m no describe cada calle; la marea y el pronóstico no equivalen a observaciones locales de inundación; el prototipo no es una alerta oficial ni garantiza seguridad vial. No afirmar que el sistema ya evita daños o predice con precisión inundaciones.
 
 **Ventana de implementación (15h00–21h00, hora Ecuador):** 15h00–15h25 alcance y reparto; 15h25–16h25 datos y mapa base; 16h25–17h30 capa de riesgo; 17h30–18h30 comparación de rutas; 18h30–19h00 escenario de simulación; 19h00–19h30 integración y ensayo; 19h30–20h15 propuesta PDF en inglés; 20h15–20h40 video pitch en inglés (máximo 3 minutos); 20h40–21h00 verificación de enlaces y entrega. Congelar funciones nuevas a las 19h00 para reservar tiempo para integración y entregables.
@@ -226,7 +236,7 @@ DryGYE/
     roads.py  routing.py  reports.py           (Persona B)
     weather.py  alerts.py  simulation.py       (Persona C)
   app/
-    app.py  templates/index.html  static/{app.js,style.css}   (Persona C, con B para el mapa)
+    app.py  templates/index.html  static/{app.js,style.css,leaflet.js,leaflet.css,images/} (Persona C, con B para el mapa)
   tests/        un archivo por módulo
   scripts/      build_data.py (genera todo lo de data/processed)
   docs/         proposal/ (borrador en inglés)
@@ -248,8 +258,8 @@ Coordenadas siempre `(lat, lon)` en EPSG:4326. Tiempos con zona `America/Guayaqu
   - `is_high_tide(ts) -> bool` (altura >= `TIDE_HIGH_M`).
 - **validation.py (A)**: `validate(points_csv) -> dict` con porcentaje de puntos inundables en riesgo alto y comparación contra puntos aleatorios. `validation_points.csv`: `name,lat,lon,source,kind`.
 - **roads.py (B)**
-  - `load_graph() -> networkx.MultiDiGraph` (de GraphML; si no existe, lo baja con OSMnx y lo guarda); cada arista con `length`, `risk_base`, `geometry`.
-  - `nearest_node(graph, lat, lon) -> int`.
+  - Construye y guarda el grafo piloto desde `data/raw/municipal_roads_pilot.geojson` a `data/processed/road_graph.graphml`; si el archivo ya existe, routing lo lee localmente. OSMnx queda como alternativa, no dependencia de la demo.
+  - La fuente municipal no incluye sentido vial; el prototipo trata aristas como bidireccionales y muestra límites de cobertura.
 - **routing.py (B)**
   - `route(graph, origin, dest, factor: float, reports: list[dict], mode: str) -> dict`, con `mode` `"fast"` o `"safe"`; devuelve `{"coords": [[lat,lon],...], "length_m": float, "time_min": float, "max_risk": float, "mean_risk": float}`.
   - `compare(graph, origin, dest, factor, reports) -> {"fast": ..., "safe": ...}`.
@@ -259,10 +269,10 @@ Coordenadas siempre `(lat, lon)` en EPSG:4326. Tiempos con zona `America/Guayaqu
   - `forecast_summary(data) -> dict` devuelve acumulados de 3/24 h y las próximas 12 horas para la interfaz.
 - **alerts.py (C)**
   - `current_state(scenario) -> dict` calcula alertas para un escenario sintético de lluvia y marea.
-  - `forecast_state(rain_24h) -> dict` calcula alertas y el factor de ruta con lluvia de pronóstico; no incluye marea.
+  - `forecast_state(rain_24h, tide_m=None) -> dict` calcula alertas y el factor de ruta con lluvia puntual y marea opcional de INOCAR.
   - `sector_levels(state) -> list[dict]`.
 - **simulation.py (C)**: `SCENARIOS`, `simulate(scenario, minutes) -> dict` (serie de lluvia sintética y nivel por sensor virtual), `virtual_sensors() -> list[dict]`.
-- **app (C + B)**: rutas Flask `GET /` (mapa), `GET /api/state?mode=simulation|forecast&scenario=`, `GET /api/weather` (pronóstico horario), `GET /api/risk` (GeoJSON simplificado o PNG overlay), `GET /api/route?from=lat,lon&to=lat,lon&mode=simulation|forecast&scenario=`, `POST /api/report`, `GET /api/sensors`. JSON en inglés. En modo forecast, la lluvia del punto central modifica el factor de ruta; la marea no se incluye.
+- **app (C + B)**: rutas Flask `GET /` (mapa), `GET /api/state?mode=simulation|forecast&scenario=`, `GET /api/weather` (pronóstico horario), `GET /api/risk`, `GET /api/reference/roads`, `GET /api/reference/flood-zones`, `GET /api/route?from=lat,lon&to=lat,lon&mode=simulation|forecast&scenario=`. Los recursos Leaflet se sirven localmente; las teselas de fondo son externas. JSON en inglés. En modo forecast, lluvia puntual y marea INOCAR (si la tabla cubre la hora) modifican el factor de ruta.
 
 ## 14. Orden de construcción (hitos con hora)
 

@@ -1,14 +1,38 @@
-const map = L.map('map').setView([-2.19, -79.89], 12);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+const PILOT_BOUNDS=[[-2.22,-79.94],[-2.14,-79.86]];
+const map = L.map('map',{maxBounds:PILOT_BOUNDS,maxBoundsViscosity:.75}).setView([-2.19, -79.89], 12);
+const basemapStatus=document.getElementById('basemapStatus');
+const baseTiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' });
+baseTiles.on('tileerror',()=>{basemapStatus.hidden=false;});
+baseTiles.on('tileload',()=>{basemapStatus.hidden=true;});
+baseTiles.addTo(map);
 const legend=L.control({position:'bottomright'});
-legend.onAdd=()=>{const d=L.DomUtil.create('div','map-legend');d.innerHTML='<b>Estimated terrain risk</b><div><i style="background:#21a179"></i>Lower</div><div><i style="background:#a7c957"></i>Moderate</div><div><i style="background:#f4a259"></i>Elevated</div><div><i style="background:#b42318"></i>Higher</div><hr><div><i class="line-fast"></i>Fastest route</div><div><i class="line-safe"></i>Lower estimated risk</div>';return d;};
+legend.onAdd=()=>{const d=L.DomUtil.create('div','map-legend');d.innerHTML='<b>Estimated terrain risk</b><div><i style="background:#21a179"></i>Lower</div><div><i style="background:#a7c957"></i>Moderate</div><div><i style="background:#f4a259"></i>Elevated</div><div><i style="background:#b42318"></i>Higher</div><hr><div><i class="line-roads"></i>Municipal pilot streets</div><div><i class="line-reference"></i>Municipal flood reference</div><div><i class="line-fast"></i>Fastest route</div><div><i class="line-safe"></i>Lower estimated risk</div>';return d;};
 legend.addTo(map);
 const colors = ['#21a179','#a7c957','#f4a259','#e76f51','#b42318'];
-let riskLayer, routeLayer, markers = [], points = [];
+let riskLayer, roadLayer, routeLayer, floodLayer, markers = [], points = [];
 let forecastMarker;
 const scenario = document.getElementById('scenario');
 const dataMode = document.getElementById('dataMode');
+const floodLayerToggle = document.getElementById('floodLayerToggle');
 function riskColor(v){ return colors[Math.min(4, Math.floor(v*5))]; }
+async function refreshRoads(){
+  try{
+    const r=await fetch('/api/reference/roads'),data=await r.json();if(!r.ok)throw new Error(data.error||'Road layer unavailable');
+    roadLayer=L.geoJSON(data,{style:{color:'#34495e',weight:1.4,opacity:.62},onEachFeature:(feature,layer)=>{
+      const popup=document.createElement('div'),title=document.createElement('b'),type=document.createElement('div'),note=document.createElement('small');
+      title.textContent='Municipal pilot street segment';type.textContent=feature.properties?.TIPO_VIA||'Road type not specified';note.textContent='Direction is not provided by this source.';
+      popup.append(title,type,note);layer.bindPopup(popup);
+    }}).addTo(map);
+  }catch(e){console.warn('Municipal road layer unavailable',e);}
+}
+async function toggleFloodReference(){
+  if(!floodLayerToggle.checked){if(floodLayer)map.removeLayer(floodLayer);return;}
+  try{
+    const r=await fetch('/api/reference/flood-zones'),data=await r.json();if(!r.ok)throw new Error(data.error||'Reference layer unavailable');
+    if(floodLayer)map.removeLayer(floodLayer);
+    floodLayer=L.geoJSON(data,{style:{color:'#7b2cbf',weight:1.5,dashArray:'5 4',fillColor:'#7b2cbf',fillOpacity:.07},onEachFeature:(f,l)=>l.bindPopup('Municipal flood-prone reference zone<br><small>Historical/study-based layer; not a current closure.</small>')}).addTo(map);
+  }catch(e){floodLayerToggle.checked=false;document.getElementById('routes').innerHTML=`<div class="route-card">${e.message}</div>`;}
+}
 async function refreshRisk(){
   try { const data = await fetch('/api/risk').then(r=>r.json());
     if(data.error) throw new Error(data.error);
@@ -24,7 +48,7 @@ async function refreshState(){
   document.getElementById('rain').textContent=`${s.rain_24h} mm`;
   document.getElementById('tide').textContent=s.tide_m==null?'not included':`${s.tide_m} m`;
   document.getElementById('alert').className=`alert ${s.level}`;
-  document.getElementById('conditionNote').textContent=s.mode==='forecast'?'Open-Meteo forecast point · tide not included':'Synthetic scenario · SIMULATION';
+  document.getElementById('conditionNote').textContent=s.mode==='forecast'?`Open-Meteo point forecast${s.tide_m==null?' · tide not included':' + INOCAR tide prediction'}`:'Synthetic scenario · SIMULATION';
   document.getElementById('modeBadge').textContent=s.mode==='forecast'?'LIVE FORECAST':'SIMULATION';
   scenario.disabled=dataMode.value==='forecast';
 }
@@ -58,6 +82,14 @@ map.on('click',e=>{
   markers.push(L.marker(e.latlng).addTo(map).bindPopup(points.length===1?'Origin':'Destination').openPopup());
   const b=document.getElementById('routeButton'); b.disabled=points.length!==2; b.textContent=points.length===2?'Compare routes':'Choose destination';
 });
+function loadDemoTrip(){
+  const demo=[[-2.19027900875079,-79.8894204210367],[-2.18306668669043,-79.9011078670034]];
+  points=demo;markers.forEach(m=>map.removeLayer(m));markers=[];if(routeLayer)map.removeLayer(routeLayer);
+  markers.push(L.marker(demo[0]).addTo(map).bindPopup('Demo origin'));
+  markers.push(L.marker(demo[1]).addTo(map).bindPopup('Demo destination'));
+  const b=document.getElementById('routeButton');b.disabled=false;b.textContent='Compare demo trip';
+  calculateRoute();
+}
 async function calculateRoute(){
   const b=document.getElementById('routeButton');b.disabled=true;b.textContent='Calculating…';
   const q=new URLSearchParams({from:points[0].join(','),to:points[1].join(','),scenario:scenario.value,mode:dataMode.value});
@@ -68,9 +100,13 @@ async function calculateRoute(){
       L.polyline(data.fast.coords,{color:'#4776e6',weight:5,dashArray:'8 7'}),
       L.polyline(data.safe.coords,{color:'#078a70',weight:6})
     ]).addTo(map);map.fitBounds(routeLayer.getBounds(),{padding:[30,30]});
-    document.getElementById('routes').innerHTML=`<div class="route-card"><b>Fastest route</b>${data.fast.length_m} m · ${data.fast.time_min} min · risk ${data.fast.mean_risk}</div><div class="route-card safe"><b>Lower estimated risk</b>${data.safe.length_m} m · ${data.safe.time_min} min · risk ${data.safe.mean_risk}</div>`;
-  }catch(e){document.getElementById('routes').innerHTML=`<div class="route-card">${e.message}. Check internet access to OpenStreetMap.</div>`;}
+    const snap=`Road snap: ${data.snapping.origin_m} m at origin · ${data.snapping.destination_m} m at destination`;
+    const warning=data.warning?`<div class="route-card">${data.warning}</div>`:'';
+    document.getElementById('routes').innerHTML=`<div class="route-card"><b>Fastest route</b>${data.fast.length_m} m · ${data.fast.time_min} min · mean risk ${data.fast.mean_risk}</div><div class="route-card safe"><b>Lower estimated risk</b>${data.safe.length_m} m · ${data.safe.time_min} min · mean risk ${data.safe.mean_risk}</div><p class="hint">${snap}</p>${warning}`;
+  }catch(e){document.getElementById('routes').innerHTML=`<div class="route-card">${e.message}</div>`;}
   b.disabled=false;b.textContent='Compare again';
 }
 document.getElementById('routeButton').addEventListener('click',calculateRoute);
-refreshRisk();refreshState().catch(e=>{document.getElementById('conditionNote').textContent=e.message;});refreshWeather();
+document.getElementById('demoRouteButton').addEventListener('click',loadDemoTrip);
+floodLayerToggle.addEventListener('change',toggleFloodReference);
+refreshRoads();refreshRisk();refreshState().catch(e=>{document.getElementById('conditionNote').textContent=e.message;});refreshWeather();
