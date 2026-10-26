@@ -5,10 +5,10 @@ Lee este archivo completo antes de tocar nada. Es el contexto que el equipo (3 e
 ## 0. Reglas para Claude Code
 
 - **Antes de las 15h00 del lunes 26-oct-2026 (hora Ecuador):** no escribas código del proyecto. Desde las 15h00 ya se puede desarrollar y hacer commits (regla 6.6).
-- **Commits:** usa la identidad git local de cada persona. Si tu herramienta agrega una línea `Co-Authored-By: Claude`, déjala (es transparente con la regla 6.3) y revisa con `git log -1`. Nunca hagas `push --force` ni toques `main` directamente.
+- **Commits:** usa la identidad git local de cada persona. Si tu herramienta agrega una línea `Co-Authored-By: Claude`, déjala (es transparente con la regla 6.3) y revisa con `git log -1`. Todo se trabaja directo en `main` (no hay ramas por persona). Nunca hagas `push --force`.
 - **Idioma:** conversa con el equipo en español informal. Todo lo que se entrega va en **inglés**: código, comentarios, nombres, mensajes de commit, README, textos de la interfaz, propuesta y video (el jurado es de ESPOL y de Sri Sairam, India).
 - **El diseño técnico está en las secciones 11 a 16** (arquitectura, estructura de carpetas, contratos entre módulos, orden de construcción, reparto y prompts iniciales). Es una propuesta de partida: si el equipo la cambia, se actualiza ese texto. Respeta los contratos de la sección 13 para que los módulos de cada persona encajen.
-- **Trabaja solo en tu módulo y rama** (sección 15). Si necesitas algo de otro módulo, usa su contrato o pídelo al compañero; no lo reescribas.
+- **Trabaja solo en tu módulo** (sección 15), siempre en `main`. Si necesitas algo de otro módulo, usa su contrato o pídelo al compañero; no lo reescribas.
 - **Todos deben poder defender el código ante el jurado** (regla 6.4). Prefiere soluciones simples, funciones cortas y comentarios donde algo no sea obvio. Después de implementar algo no trivial, explica en 3 a 5 líneas, en español, cómo funciona.
 - **Originalidad (6.2):** no copies proyectos existentes. FRESH (Flask + OSMnx + Folium para rutas en inundación) y GeoRescue (FastAPI + GeoPandas + OSMnx, proyecto de hackathon) se pueden mirar como referencia de ideas, nunca copiar código. Se citan en la propuesta.
 - **Datos (6.5):** solo públicos, abiertos o sintéticos. Nada de datos personales: los reportes ciudadanos no guardan nombre ni teléfono.
@@ -122,7 +122,7 @@ En la demo, mostrar primero la parte que **no** usa sensores y después el simul
 - **Instalar:** doble clic en `setup_env.bat` (Windows). Crea el entorno conda `drygye`, instala Miniconda si hace falta y al final corre `check_env.py`. Alternativas: `setup_env.ps1 -Mode venv` (sin conda) o `./setup_env.sh` (Linux/macOS). Telegram, solo si se decide: `-WithTelegram`.
 - **Verificar:** `python check_env.py` (añadir `--net` para probar Open-Meteo y OpenStreetMap; `--dem ruta.tif` para revisar un DEM).
 - **VS Code:** `Ctrl+Shift+P` → *Python: Select Interpreter* → entorno `drygye`.
-- **Git:** primer commit a las 15h00 o después. Una rama por persona y módulo (`feat/<modulo>-<nombre>`), commits pequeños, mensajes en inglés, `git pull` antes de `git push`, y a `main` solo lo que funciona. Hacer el repo público al final para que el enlace abra sin permisos.
+- **Git:** primer commit a las 15h00 o después. Todos trabajan en `main`, sin ramas por persona. Commits pequeños, mensajes en inglés, `git pull --rebase` antes de `git push`, y solo se sube código que funciona (que no rompa la app ni los tests). Hacer el repo público al final para que el enlace abra sin permisos.
 - **Dependencias nuevas:** agregarlas a `environment.yml` **y** a `requirements.txt`, y a la lista de la sección 9.
 - **Demo:** la interfaz va en inglés, con las atribuciones de Open-Meteo, OpenStreetMap y Copernicus visibles. Cachear grafo, lluvia y marea para que funcione sin internet.
 
@@ -228,8 +228,8 @@ Coordenadas siempre `(lat, lon)` en EPSG:4326. Tiempos con zona `America/Guayaqu
 
 ## 14. Orden de construcción (hitos con hora)
 
-1. **15h00–15h30** — Todos: leer este archivo, `python check_env.py`, crear `config.py`, primer commit en `main` con la plantilla y `data/raw/`, y cada quien su rama.
-2. **15h30–16h30 (Hito 1)** — A: `risk.tif` y `tides.csv` listos y subidos. B: grafo en caché y ruta rápida vs ruta con riesgo ficticio constante. C: esqueleto Flask con mapa base y `/api/state` con valores de prueba. Integrar en `main`.
+1. **15h00–15h30** — Todos: leer este archivo, `python check_env.py`, crear `config.py`, primer commit en `main` con la plantilla y `data/raw/`.
+2. **15h30–16h30 (Hito 1)** — A: `risk.tif` y `tides.csv` listos y subidos. B: grafo en caché y ruta rápida vs ruta con riesgo ficticio constante. C: esqueleto Flask con mapa base y `/api/state` con valores de prueba. Todo queda integrado en `main`.
 3. **16h30–18h00 (Hito 2)** — A: validación contra los puntos y ajuste de pesos. B: riesgo por arista desde `risk.tif`, `compare()` y reportes. C: Open-Meteo con caché, `alerts`, mapa con capa de riesgo y selector de ruta.
 4. **18h00–19h00 (Hito 3)** — C: simulación, escenarios y banner. B: ruta en el mapa con rápida vs segura. A: número de validación y tabla de límites para la propuesta; inicia el borrador del PDF.
 5. **19h00–19h30** — Integración, ensayo de la demo completa sin internet (apagar el wifi y probar). **19h30: congelar funciones.**
@@ -237,25 +237,25 @@ Coordenadas siempre `(lat, lon)` en EPSG:4326. Tiempos con zona `America/Guayaqu
 
 Si algo se atrasa, se recorta en este orden: reportes ciudadanos, sectores en alertas, escenarios extra. Lo que nunca se recorta: mapa de riesgo, ruta rápida vs segura, alertas, simulación etiquetada.
 
-## 15. Reparto y ramas
+## 15. Reparto
 
-| Persona | Rama | Módulos | Entrega a otros |
-|---|---|---|---|
-| **A: datos y riesgo** | `feat/terrain-<nombre>` | `terrain.py`, `tides.py`, `validation.py`, `scripts/build_data.py`, `data/validation_points.csv` | `risk.tif`, `tides.csv`, número de validación |
-| **B: calles y rutas** | `feat/routing-<nombre>` | `roads.py`, `routing.py`, `reports.py` | rutas `/api/route`, `/api/report` |
-| **C: alertas, simulación y web** | `feat/app-<nombre>` | `weather.py`, `alerts.py`, `simulation.py`, `app/` | `/api/state`, `/api/sensors`, la interfaz |
+| Persona | Módulos | Entrega a otros |
+|---|---|---|
+| **A: datos y riesgo** | `terrain.py`, `tides.py`, `validation.py`, `scripts/build_data.py`, `data/validation_points.csv` | `risk.tif`, `tides.csv`, número de validación |
+| **B: calles y rutas** | `roads.py`, `routing.py`, `reports.py` | rutas `/api/route`, `/api/report` |
+| **C: alertas, simulación y web** | `weather.py`, `alerts.py`, `simulation.py`, `app/` | `/api/state`, `/api/sensors`, la interfaz |
 
-Reglas de git: PRs chicos a `main` cada hora o al cumplir un hito; `git pull --rebase` antes de `git push`; cada quien solo toca sus carpetas (si necesitas cambiar `config.py`, avisa). Si alguien se atasca en algo, se le pasa a quien termine primero. Si solo 2 personas usan Claude Code, igual se respetan los contratos.
+Reglas de git: todos trabajan directo en `main`, sin ramas por persona ni PRs. Commits chicos y frecuentes (al menos al cumplir cada hito); `git pull --rebase` antes de cada `git push` y, si hay conflicto, se resuelve con el compañero dueño de ese archivo; nunca `push --force`; cada quien solo toca sus carpetas (si necesitas cambiar `config.py`, avisa). Si alguien se atasca en algo, se le pasa a quien termine primero. Si solo 2 personas usan Claude Code, igual se respetan los contratos.
 
 ## 16. Prompts iniciales (cada persona pega el suyo en Claude Code, con este archivo ya abierto)
 
 **Todos, primero:** «Lee CLAUDE.md completo. Corre `python check_env.py` y dime si el entorno está bien. Crea `drygye/config.py` según la sección 13 con BBOX del DEM, rutas de archivos y umbrales (solo constantes). Después espera mi siguiente instrucción.»
 
-**Persona A:** «Soy la Persona A (datos y riesgo), rama `feat/terrain-<mi nombre>`. Implementa `drygye/terrain.py` según el contrato de la sección 13: calcula HAND con pysheds (o, si tarda mucho, la diferencia de altura al agua más cercana con `scipy.ndimage.distance_transform_edt`), distancia al agua y pendiente, y combina con la fórmula de la sección 11. Agua = DEM <= 0. Escribe `data/processed/risk.tif`. Añade `tests/test_terrain.py` con un DEM sintético pequeño. Luego `tides.py`: parsear `data/raw/GUAYAQUIL_RIO_4.pdf` con pdfplumber (ver sección 5 para el formato y el ejemplo del 26-oct como prueba) a `tides.csv`. Explícame en 3 a 5 líneas cómo funciona cada cosa, porque debo defenderla.»
+**Persona A:** «Soy la Persona A (datos y riesgo); trabajo en `main`. Implementa `drygye/terrain.py` según el contrato de la sección 13: calcula HAND con pysheds (o, si tarda mucho, la diferencia de altura al agua más cercana con `scipy.ndimage.distance_transform_edt`), distancia al agua y pendiente, y combina con la fórmula de la sección 11. Agua = DEM <= 0. Escribe `data/processed/risk.tif`. Añade `tests/test_terrain.py` con un DEM sintético pequeño. Luego `tides.py`: parsear `data/raw/GUAYAQUIL_RIO_4.pdf` con pdfplumber (ver sección 5 para el formato y el ejemplo del 26-oct como prueba) a `tides.csv`. Explícame en 3 a 5 líneas cómo funciona cada cosa, porque debo defenderla.»
 
-**Persona B:** «Soy la Persona B (calles y rutas), rama `feat/routing-<mi nombre>`. Implementa `drygye/roads.py`: baja con OSMnx el grafo de calles transitables para autos dentro de BBOX (si es muy grande, usa los 5 distritos centrales y norte primero), guárdalo en GraphML en `data/processed/` y cárgalo desde disco. Luego `routing.py` con `route()` y `compare()` según la sección 13 y la fórmula de costo de la sección 11; mientras no exista `risk.tif`, usa un riesgo falso aleatorio por arista con una bandera clara en el código. Añade tests con un grafo pequeño de networkx. Después `reports.py`. Explícame cómo funciona cada cosa.»
+**Persona B:** «Soy la Persona B (calles y rutas); trabajo en `main`. Implementa `drygye/roads.py`: baja con OSMnx el grafo de calles transitables para autos dentro de BBOX (si es muy grande, usa los 5 distritos centrales y norte primero), guárdalo en GraphML en `data/processed/` y cárgalo desde disco. Luego `routing.py` con `route()` y `compare()` según la sección 13 y la fórmula de costo de la sección 11; mientras no exista `risk.tif`, usa un riesgo falso aleatorio por arista con una bandera clara en el código. Añade tests con un grafo pequeño de networkx. Después `reports.py`. Explícame cómo funciona cada cosa.»
 
-**Persona C:** «Soy la Persona C (alertas, simulación y web), rama `feat/app-<mi nombre>`. Crea la app Flask de la sección 13 con un mapa Leaflet (usa folium solo si ayuda), `/api/state` con valores de prueba al inicio, selector de modo «real/simulation» y de escenario, y un banner fijo «SIMULATION MODE» cuando aplique. Pie de página con las atribuciones: «Weather data by Open-Meteo.com», «© OpenStreetMap contributors», Copernicus DEM. Luego `weather.py` con Open-Meteo, caché en disco y plan B offline, y `alerts.py` con los umbrales de la sección 11. Interfaz en inglés. Explícame cómo funciona cada cosa.»
+**Persona C:** «Soy la Persona C (alertas, simulación y web); trabajo en `main`. Crea la app Flask de la sección 13 con un mapa Leaflet (usa folium solo si ayuda), `/api/state` con valores de prueba al inicio, selector de modo «real/simulation» y de escenario, y un banner fijo «SIMULATION MODE» cuando aplique. Pie de página con las atribuciones: «Weather data by Open-Meteo.com», «© OpenStreetMap contributors», Copernicus DEM. Luego `weather.py` con Open-Meteo, caché en disco y plan B offline, y `alerts.py` con los umbrales de la sección 11. Interfaz en inglés. Explícame cómo funciona cada cosa.»
 
 ## 17. Antes de entregar
 
