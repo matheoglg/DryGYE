@@ -13,9 +13,13 @@
 html, body { height: 100%; margin: 0; overflow: hidden; background: #eef4f8; }
 body { display: grid; grid-template-rows: auto 1fr; height: 100dvh; }
 
-header { display: flex; align-items: baseline; gap: 14px; padding: 10px 20px; background: var(--brand); color: #fff; }
-header h1 { margin: 0; font-size: 22px; letter-spacing: -0.5px; }
-.tagline { font-size: 13px; color: #c5e8ed; }
+/* Header colours come from the DryGYE logo (docs/brand/drygye_logo_full.jpg). */
+header { display: flex; align-items: center; gap: 10px; padding: 6px 20px; background: #fff; border-bottom: 1px solid var(--line); }
+header .logo { width: 40px; height: 40px; }
+header h1 { margin: 0 6px 0 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+header .dry { color: #134fa5; }
+header .gye { color: #3c3f44; }
+.tagline { font-size: 13px; color: var(--muted); }
 
 main { display: grid; grid-template-columns: 320px 1fr; gap: 12px; padding: 12px; min-height: 0; }
 
@@ -49,17 +53,32 @@ button:disabled { background: #9fb3c8; cursor: default; }
 button.ghost { background: #fff; color: var(--accent); border: 1px solid #9ad4c7; }
 .buttons { display: flex; gap: 8px; margin-top: 8px; }
 
+/* Start / End selector */
+.segmented { display: flex; gap: 4px; padding: 3px; margin-bottom: 8px; background: #f0f4f8; border-radius: 9px; }
+.segmented button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px; background: transparent; color: var(--muted); }
+.segmented button.active { background: #fff; color: var(--ink); box-shadow: 0 1px 3px #102a4325; }
+
+/* Start / end markers on the map and in the selector */
+.pin, .pin-dot { display: grid; place-items: center; border-radius: 50%; color: #fff; font: 700 11px/1 system-ui; }
+.pin { border: 3px solid #fff; box-shadow: 0 1px 5px #102a4366; cursor: grab; }
+.pin-dot { width: 18px; height: 18px; font-size: 10px; }
+.pin.start, .pin-dot.start { background: #134fa5; }
+.pin.end, .pin-dot.end { background: #c0392b; }
+
 .route-card {
-  display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 8px;
+  display: flex; flex-direction: column; gap: 6px;
   margin-top: 8px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px;
   font-size: 13px; cursor: pointer; transition: border-color .15s, background .15s;
 }
 .route-card:hover { border-color: #9fb3c8; }
 .route-card.selected { border-color: var(--accent); background: #effaf8; box-shadow: inset 3px 0 0 var(--accent); }
-.route-card b { display: block; font-size: 13px; }
-.route-card small { color: var(--muted); font-size: 11px; }
-.swatch { width: 20px; height: 4px; border-radius: 2px; }
-.pill { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.route-head { display: flex; align-items: center; gap: 8px; }
+.route-head b { font-size: 13px; }
+.route-head small { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.route-risk { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--muted); }
+.route-risk span { display: flex; align-items: center; gap: 4px; }
+.swatch { width: 20px; height: 4px; border-radius: 2px; flex: none; }
+.pill { padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .pill.low { background: #def7ec; color: #03543f; }
 .pill.medium { background: #fff4cf; color: #6b4f00; }
 .pill.high { background: #ffebe8; color: #8a271c; }
@@ -83,7 +102,6 @@ button.ghost { background: #fff; color: var(--accent); border: 1px solid #9ad4c7
 .map-legend .ends { display: flex; justify-content: space-between; margin-bottom: 4px; }
 .map-legend i { display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle; }
 .leaflet-control-attribution { font-size: 9px !important; }
-.leaflet-tooltip.endpoint { font-weight: 700; }
 
 /* Small screens: map on top, panel below; only the panel scrolls. */
 @media (max-width: 800px) {

@@ -26,7 +26,8 @@ ROAD_SOURCE_PATH = RAW_DIR / "municipal_roads_pilot.geojson"
 # --- Area ---
 # DEM bounds: (south, west, north, east) = (lat_min, lon_min, lat_max, lon_max)
 BBOX = (-2.400, -80.150, -1.950, -79.800)
-PILOT_BBOX = (-2.220, -79.940, -2.140, -79.860)
+# Covered area: Guasmo / Isla Trinitaria (south) to Samanes / Sauces (north), west to Monte Sinai.
+PILOT_BBOX = (-2.290, -80.020, -2.070, -79.860)
 CITY_CENTER = (-2.19, -79.89)
 TIMEZONE = "America/Guayaquil"
 

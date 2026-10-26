@@ -16,6 +16,8 @@ def main():
         "geometryType": "esriGeometryEnvelope", "inSR": 4326,
         "spatialRel": "esriSpatialRelIntersects", "outFields": "FID,Descrip,Área_ha",
         "outSR": 4326, "returnGeometry": "true", "f": "geojson",
+        # Server-side simplification (~5 m) keeps the file small enough for the web map.
+        "maxAllowableOffset": 0.00005, "geometryPrecision": 5,
     }
     response = requests.get(SERVICE, params=params, timeout=45)
     response.raise_for_status()

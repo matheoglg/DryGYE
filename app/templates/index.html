@@ -4,12 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DryGYE</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='leaflet.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header>
-    <h1>DryGYE</h1>
+    <img class="logo" src="{{ url_for('static', filename='logo.png') }}" alt="">
+    <h1><span class="dry">Dry</span><span class="gye">GYE</span></h1>
     <span class="tagline">Compare routes in Guayaquil during heavy rain</span>
   </header>
   <main>
@@ -40,7 +42,11 @@
 
       <div class="routes">
         <div class="section-title">Routes</div>
-        <p id="routeHint" class="hint">Click the map to set a start and an end point.</p>
+        <div class="segmented" role="group" aria-label="Point to place on the map">
+          <button id="pickStart" type="button" class="active"><span class="pin-dot start">S</span>Start</button>
+          <button id="pickEnd" type="button"><span class="pin-dot end">E</span>End</button>
+        </div>
+        <p id="routeHint" class="hint"></p>
         <button id="routeButton" type="button" disabled>Calculate routes</button>
         <div class="buttons">
           <button id="demoButton" type="button" class="ghost">Demo trip</button>
@@ -56,6 +62,7 @@
       <div id="simBanner" class="sim-banner" hidden>SIMULATION MODE</div>
     </section>
   </main>
+  <script>const PILOT_BBOX = {{ pilot_bbox | tojson }}; // [south, west, north, east] from config.py</script>
   <script src="{{ url_for('static', filename='leaflet.js') }}"></script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

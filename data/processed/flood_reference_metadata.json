@@ -1,0 +1,9 @@
+{
+  "title": "Zonas_Inundables_GYE",
+  "owner": "darviljg_MIMG",
+  "service": "https://services7.arcgis.com/NWWHhu45fOJtCgG3/arcgis/rest/services/Zonas_Inundables_GYE/FeatureServer",
+  "description": "Flood-prone zones compiled from municipal, utility, study, and historical-event sources.",
+  "source_updated": "2025-10-29",
+  "retrieved_features": 1136,
+  "license_note": "Public ArcGIS feature service; confirm attribution and reuse terms before publication."
+}

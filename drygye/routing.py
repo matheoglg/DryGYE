@@ -1,9 +1,11 @@
 """Fastest vs lower-risk route comparison over the pilot street graph, plus alternatives."""
+from functools import lru_cache
+
 import networkx as nx
 import numpy as np
 from pyproj import Geod
 
-from drygye.config import DEFAULT_SPEED_KMH, RISK_BLOCK, RISK_COST_WEIGHT
+from drygye.config import DEFAULT_SPEED_KMH, PILOT_BBOX, RISK_BLOCK, RISK_COST_WEIGHT
 from drygye.roads import edge_coords, load_graph
 
 GEOD = Geod(ellps="WGS84")
@@ -16,10 +18,8 @@ ALT_MAX_OVERLAP = 0.7    # an alternative may share at most this share of its le
 def compare_routes(origin, destination, state):
     """Return the fastest route, the lower-estimated-risk route and a few alternatives."""
     graph = load_graph()
-    source, d1 = _nearest_node(graph, *origin)
-    target, d2 = _nearest_node(graph, *destination)
-    if max(d1, d2) > MAX_SNAP_M:
-        raise ValueError("Pick points closer to a street inside the pilot area.")
+    source, d1 = _snap(graph, origin, "start")
+    target, d2 = _snap(graph, destination, "end")
 
     factor = state["factor"]
 
@@ -107,11 +107,28 @@ def _summary(graph, nodes, origin, destination, risk_dyn, edge_weight):
             "max_risk": round(max(risks), 3) if risks else 0}
 
 
+def _snap(graph, point, name):
+    """Nearest street node to a chosen point, with a clear message when it cannot be used."""
+    south, west, north, east = PILOT_BBOX
+    if not (south <= point[0] <= north and west <= point[1] <= east):
+        raise ValueError(f"The {name} point is outside the covered area. Choose a point inside the dashed border.")
+    node, distance = _nearest_node(graph, *point)
+    if distance > MAX_SNAP_M:
+        raise ValueError(f"The {name} point is {distance / 1000:.1f} km from the nearest street "
+                         "(it may be on water, a hill or a park). Choose a point on or next to a street.")
+    return node, distance
+
+
+@lru_cache(maxsize=1)
+def _node_arrays(graph):
+    """Node ids and coordinates as arrays, built once per loaded graph."""
+    nodes = list(graph.nodes)
+    return nodes, np.array([graph.nodes[n]["y"] for n in nodes]), np.array([graph.nodes[n]["x"] for n in nodes])
+
+
 def _nearest_node(graph, lat, lon):
     """Closest graph node to (lat, lon) and its distance in metres."""
-    nodes = list(graph.nodes)
-    ys = np.array([graph.nodes[n]["y"] for n in nodes])
-    xs = np.array([graph.nodes[n]["x"] for n in nodes])
+    nodes, ys, xs = _node_arrays(graph)
     # Equirectangular approximation is enough to pick the nearest node in a 9 km area.
     i = int(np.argmin((ys - lat) ** 2 + ((xs - lon) * np.cos(np.radians(lat))) ** 2))
     return nodes[i], abs(GEOD.inv(lon, lat, xs[i], ys[i])[2])

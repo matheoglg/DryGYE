@@ -34,9 +34,9 @@ The simulation route mode uses synthetic rain and tide. Forecast route mode uses
 ## Demo verification
 
 - The demo trip (Urdesa / Kennedy area, flooded on 24 October 2026) produced 4,092 m fastest (8.2 min) and 4,373 m lower estimated risk (8.7 min) in the heavy-rain/high-tide simulation. Mean estimated risk was 0.322 vs 0.132. Two alternatives: 4,570 m (0.251) and 5,176 m (0.168).
-- The pilot street graph has 7,956 nodes and 19,868 directed edges.
+- The covered area runs from Guasmo / Isla Trinitaria (south) to Samanes / Sauces (north) and west to Monte Sinai (`PILOT_BBOX` in `drygye/config.py`); it is drawn on the map as a dashed border. Its street graph has 36,139 nodes and 99,597 directed edges and loads in about 9 s at startup.
 - The INOCAR PDF parser produced 355 tide events for October-December 2026; the four 26 October times and heights in the PDF matched the parsed table.
-- The municipal flood-reference layer contains 206 polygons. These counts describe the downloaded pilot subset, not citywide coverage.
+- The municipal flood-reference layer contains 1,136 polygons (simplified to about 5 m). These counts describe the downloaded pilot subset, not citywide coverage.
 - A 10-pixel-stride raster comparison found mean heuristic risk 0.461 inside reference polygons (n=157 sampled cells) and 0.252 outside (n=18,899). This is a spatial sanity check against a related reference layer, not independent ground-truth validation or a predictive accuracy score.
 
 The three-person team has two Computing students and one Data Science and AI student. AI tools used: Codex and Claude Code. The team should review and be prepared to explain all code and assumptions. See [the proposal](docs/DryGYE_Proposal.pdf) for scope, sources, safeguards and a next-step plan.

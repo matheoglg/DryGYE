@@ -1,12 +1,13 @@
-const PILOT_BOUNDS = L.latLngBounds([[-2.22, -79.94], [-2.14, -79.86]]);
+const PILOT_BOUNDS = L.latLngBounds([PILOT_BBOX[0], PILOT_BBOX[1]], [PILOT_BBOX[2], PILOT_BBOX[3]]);
 // Urdesa / Kennedy area (flooded on 24-oct-2026): the lower-risk route clearly differs here.
-const DEMO_TRIP = [[-2.16899, -79.91956], [-2.14642, -79.92559]];
+const DEMO_TRIP = { start: [-2.16899, -79.91956], end: [-2.14642, -79.92559] };
 const RISK_COLORS = ['#21a179', '#a7c957', '#f4a259', '#e76f51', '#b42318'];
 const ROUTE_STYLE = {
   safe: { name: 'Lower risk', color: '#078a70' },
   fast: { name: 'Fastest', color: '#3b6fe0', dashArray: '8 6' },
   alt: { name: 'Alternative', color: '#8e44ad' },
 };
+const POINT_LABEL = { start: 'Start', end: 'End' };
 
 const $ = id => document.getElementById(id);
 const conditions = $('conditions');
@@ -20,19 +21,32 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 map.attributionControl.addAttribution(
   'Weather: <a href="https://open-meteo.com/">Open-Meteo.com</a> · Copernicus DEM GLO-30 · Tides: INOCAR · Flood zones: Municipality of Guayaquil');
 
+// Covered area: everything outside is shaded and the border is dashed.
+// Own pane above the risk layer (overlay pane = 400), below markers (600).
+map.createPane('coverage').style.zIndex = 450;
+const outside = PILOT_BOUNDS.pad(3);
+L.polygon([
+  [outside.getNorthWest(), outside.getNorthEast(), outside.getSouthEast(), outside.getSouthWest()],
+  [PILOT_BOUNDS.getNorthWest(), PILOT_BOUNDS.getNorthEast(), PILOT_BOUNDS.getSouthEast(), PILOT_BOUNDS.getSouthWest()],
+], { pane: 'coverage', stroke: false, fillColor: '#102a43', fillOpacity: 0.28, interactive: false }).addTo(map);
+L.rectangle(PILOT_BOUNDS, { pane: 'coverage', color: '#073b4c', weight: 2, dashArray: '8 6', fill: false, interactive: false }).addTo(map);
+
 const legend = L.control({ position: 'bottomright' });
 legend.onAdd = () => {
   const d = L.DomUtil.create('div', 'map-legend');
   d.innerHTML = '<b>Estimated flood risk</b><div class="scale"></div><div class="ends"><span>Low</span><span>High</span></div>'
     + '<div><i style="background:#078a70"></i>Lower risk route</div>'
     + '<div><i style="border-top:3px dashed #3b6fe0"></i>Fastest route</div>'
-    + '<div><i style="background:#8e44ad"></i>Alternative (click to view)</div>';
+    + '<div><i style="background:#8e44ad"></i>Alternative (click to view)</div>'
+    + '<div><i style="border-top:2px dashed #073b4c"></i>Covered area</div>';
   return d;
 };
 legend.addTo(map);
 
 let floodLayer, routeLayer;
-let points = [], markers = [];
+const points = { start: null, end: null };
+const markers = { start: null, end: null };
+let pickMode = 'start';
 let routes = [], selected = 0;
 
 function riskColor(v) { return RISK_COLORS[Math.min(4, Math.floor(v * 5))]; }
@@ -110,7 +124,41 @@ function drawRainChart(hours) {
   });
 }
 
-// --- Points ---
+// --- Start / end points ---
+function setPickMode(kind) {
+  pickMode = kind;
+  $('pickStart').classList.toggle('active', kind === 'start');
+  $('pickEnd').classList.toggle('active', kind === 'end');
+  updateRouteControls();
+}
+
+function pinIcon(kind) {
+  return L.divIcon({ className: `pin ${kind}`, html: kind === 'start' ? 'S' : 'E', iconSize: [26, 26], iconAnchor: [13, 13] });
+}
+
+// Places (or moves) the start or end point. Markers can also be dragged to adjust them.
+function setPoint(kind, latlng) {
+  if (!PILOT_BOUNDS.contains(latlng)) {
+    updateRouteControls('That point is outside the covered area. Click inside the dashed border.');
+    return;
+  }
+  points[kind] = [latlng[0], latlng[1]];
+  if (markers[kind]) {
+    markers[kind].setLatLng(latlng);
+  } else {
+    markers[kind] = L.marker(latlng, { icon: pinIcon(kind), draggable: true, title: `${POINT_LABEL[kind]} (drag to move)` })
+      .on('dragend', e => {
+        const p = e.target.getLatLng();
+        setPoint(kind, [p.lat, p.lng]);
+      })
+      .addTo(map);
+  }
+  // After placing the start, the next click sets the end (if it is still missing).
+  if (kind === 'start' && !points.end) setPickMode('end');
+  if (routes.length) calculateRoutes();
+  else updateRouteControls();
+}
+
 function clearRoutes() {
   if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   routes = [];
@@ -119,28 +167,20 @@ function clearRoutes() {
 
 function clearAll() {
   clearRoutes();
-  points = [];
-  markers.forEach(m => map.removeLayer(m)); markers = [];
-  updateRouteControls();
-}
-
-function addPoint(latlng) {
-  if (points.length === 2) clearAll();
-  points.push([latlng[0], latlng[1]]);
-  const label = points.length === 1 ? 'Start' : 'End';
-  markers.push(L.marker(latlng).addTo(map)
-    .bindTooltip(label, { permanent: true, direction: 'top', offset: [-15, -12], className: 'endpoint' }));
-  updateRouteControls();
+  for (const kind of ['start', 'end']) {
+    if (markers[kind]) map.removeLayer(markers[kind]);
+    markers[kind] = points[kind] = null;
+  }
+  setPickMode('start');
 }
 
 function updateRouteControls(message) {
-  const ready = points.length === 2;
+  const ready = points.start && points.end;
   $('routeButton').disabled = !ready;
   $('routeHint').textContent = message
-    || (points.length === 0 ? 'Click the map to set a start and an end point.'
-      : points.length === 1 ? 'Now click the end point.'
-        : routes.length ? 'Click a route on the map or in the list to view it.'
-          : 'Press "Calculate routes".');
+    || (routes.length ? 'Click a route to view it. Drag S or E to adjust.'
+      : ready ? 'Press "Calculate routes". Drag S or E to adjust.'
+        : `Click inside the dashed border to set the ${POINT_LABEL[pickMode].toLowerCase()} point.`);
 }
 
 // --- Routes ---
@@ -169,14 +209,20 @@ function drawRoutes() {
   });
 }
 
+function riskPill(value) {
+  const label = riskLabel(value);
+  return `<span class="pill ${label}">${label[0].toUpperCase()}${label.slice(1)}</span>`;
+}
+
+// Overall risk = mean over the route's streets; riskiest stretch = its single highest-risk street.
 function routeCard(r, i) {
-  const label = riskLabel(r.mean_risk), style = ROUTE_STYLE[r.kind];
-  const swatch = style.dashArray
-    ? `border-top:4px dashed ${style.color}` : `background:${style.color}`;
+  const style = ROUTE_STYLE[r.kind];
+  const swatch = style.dashArray ? `border-top:4px dashed ${style.color}` : `background:${style.color}`;
   return `<div class="route-card${i === selected ? ' selected' : ''}" data-index="${i}">`
-    + `<span class="swatch" style="${swatch}"></span>`
-    + `<span><b>${r.name}</b><small>${(r.length_m / 1000).toFixed(1)} km · ${Math.round(r.time_min)} min · max risk ${r.max_risk.toFixed(2)}</small></span>`
-    + `<span class="pill ${label}">${label} risk</span></div>`;
+    + `<div class="route-head"><span class="swatch" style="${swatch}"></span><b>${r.name}</b>`
+    + `<small>${(r.length_m / 1000).toFixed(1)} km · ${Math.round(r.time_min)} min</small></div>`
+    + `<div class="route-risk"><span>Overall risk ${riskPill(r.mean_risk)}</span>`
+    + `<span>Riskiest stretch ${riskPill(r.max_risk)}</span></div></div>`;
 }
 
 function renderRouteList(warning) {
@@ -194,10 +240,10 @@ function selectRoute(i) {
 }
 
 async function calculateRoutes() {
-  if (points.length !== 2) return;
+  if (!points.start || !points.end) return;
   const button = $('routeButton');
   button.disabled = true; button.textContent = 'Calculating…';
-  const q = new URLSearchParams({ from: points[0].join(','), to: points[1].join(',') });
+  const q = new URLSearchParams({ from: points.start.join(','), to: points.end.join(',') });
   try {
     const data = await getJson(`/api/route?${q}&${stateQuery()}`);
     routes = buildRouteList(data);
@@ -211,18 +257,21 @@ async function calculateRoutes() {
     updateRouteControls(e.message);
   }
   button.textContent = 'Calculate routes';
-  button.disabled = points.length !== 2;
+  button.disabled = !(points.start && points.end);
 }
 
 function loadDemoTrip() {
   clearAll();
-  DEMO_TRIP.forEach(p => addPoint(p));
+  setPoint('start', DEMO_TRIP.start);
+  setPoint('end', DEMO_TRIP.end);
   calculateRoutes();
 }
 
 // --- Wiring ---
-map.on('click', e => addPoint([e.latlng.lat, e.latlng.lng]));
+map.on('click', e => setPoint(pickMode, [e.latlng.lat, e.latlng.lng]));
 conditions.addEventListener('change', () => { refreshState(); if (routes.length) calculateRoutes(); });
+$('pickStart').addEventListener('click', () => setPickMode('start'));
+$('pickEnd').addEventListener('click', () => setPickMode('end'));
 $('routeButton').addEventListener('click', calculateRoutes);
 $('demoButton').addEventListener('click', loadDemoTrip);
 $('clearButton').addEventListener('click', clearAll);
@@ -231,3 +280,4 @@ $('floodToggle').addEventListener('change', toggleFloodZones);
 loadRiskLayer();
 refreshState();
 refreshForecast();
+updateRouteControls();

@@ -203,8 +203,8 @@ El equipo decide conjuntamente el alcance y cada persona debe poder explicar el 
 
 ### Estado implementado para la demo (26-oct-2026)
 
-- Las rutas usan la red vial de OpenStreetMap de la zona piloto, guardada en `data/processed/road_graph.graphml` (solo el mayor componente conexo, para que cualquier par de puntos tenga ruta). Las líneas siguen la forma de las calles y llegan hasta los puntos elegidos. El botón «Demo trip» carga el viaje de ejemplo.
-- Se pueden alternar 206 polígonos municipales de referencia de zonas inundables. Son antecedentes de estudios/eventos históricos, no cierres ni observaciones actuales. No se obtuvieron los 74 puntos vulnerables para validación.
+- La zona cubierta va del Guasmo e Isla Trinitaria (sur) a Samanes y Sauces (norte) y al oeste hasta Monte Sinaí (`PILOT_BBOX`); el mapa la marca con un borde punteado y sombrea el exterior. Las rutas usan la red vial de OpenStreetMap de esa zona (36.139 nodos), guardada en `data/processed/road_graph.graphml` (solo el mayor componente conexo, para que cualquier par de puntos tenga ruta). Las líneas siguen la forma de las calles y llegan hasta los puntos elegidos. El botón «Demo trip» carga el viaje de ejemplo.
+- Se pueden alternar 1.136 polígonos municipales de referencia de zonas inundables. Son antecedentes de estudios/eventos históricos, no cierres ni observaciones actuales. No se obtuvieron los 74 puntos vulnerables para validación.
 - La ruta demo, en «Heavy rain + high tide», produjo 2.843 km / 5.7 min para la más corta y 3.163 km / 6.3 min para menor costo estimado; riesgo medio 0.702 y 0.226 respectivamente. La alternativa aún incluye un segmento muy riesgoso y la interfaz avisa.
 - El parser de INOCAR generó 355 eventos para oct-dic de 2026; los cuatro eventos listados para el 26-oct coinciden con el PDF. El pronóstico conecta lluvia puntual Open-Meteo con la interpolación de marea INOCAR cuando hay cobertura temporal.
 - Chequeo espacial descriptivo (muestreo cada 10 píxeles): riesgo medio 0.461 dentro de los polígonos de referencia (n=157 celdas) y 0.252 fuera (n=18.899). No es validación independiente ni precisión del modelo.

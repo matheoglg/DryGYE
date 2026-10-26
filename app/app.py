@@ -17,7 +17,7 @@ from drygye.alerts import SCENARIOS, current_state, forecast_state
 from drygye.routing import compare_routes
 from drygye.terrain import risk_geojson
 from drygye.weather import WeatherUnavailable, forecast_summary, get_forecast
-from drygye.config import FLOOD_REFERENCE_PATH, TIMEZONE
+from drygye.config import FLOOD_REFERENCE_PATH, PILOT_BBOX, TIMEZONE
 
 
 def _forecast_state():
@@ -38,7 +38,7 @@ app = Flask(__name__)
 
 @app.get("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", pilot_bbox=PILOT_BBOX)
 
 
 @app.get("/api/state")
@@ -102,4 +102,7 @@ def route():
 
 
 if __name__ == "__main__":
+    from drygye.roads import load_graph
+    print("Loading street graph (a few seconds)...")
+    load_graph()  # load once at startup so the first route request is fast
     app.run(host="127.0.0.1", port=5000, debug=False)
