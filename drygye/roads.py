@@ -1,68 +1,111 @@
-"""Build and persist a small routable graph from the municipal pilot road layer."""
-import json
+"""Drivable street graph for the pilot area, built once from OpenStreetMap and stored on disk.
 
-import networkx as nx
-from pyproj import Geod
-from shapely.geometry import LineString, MultiLineString, box, shape
-from shapely.ops import unary_union
+Overpass (the usual OSMnx source) is often unreachable, so the raw data comes from the
+main OSM API in small tiles. Only drivable streets are kept, then OSMnx builds the graph.
+"""
+import tempfile
+import xml.etree.ElementTree as ET
+from functools import lru_cache
+from pathlib import Path
 
-from drygye.config import GRAPH_PATH, PILOT_BBOX, ROAD_SOURCE_PATH
+import osmnx as ox
+import requests
+
+from drygye.config import GRAPH_PATH, PILOT_BBOX
 from drygye.terrain import risk_at
 
-GEOD = Geod(ellps="WGS84")
+OSM_API_MAP = "https://api.openstreetmap.org/api/0.6/map"
+TILE_DEG = 0.02
+DRIVE_HIGHWAYS = {
+    "motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link",
+    "secondary", "secondary_link", "tertiary", "tertiary_link",
+    "unclassified", "residential", "living_street",
+}
 
 
-def build_pilot_graph(source_path=ROAD_SOURCE_PATH):
-    """Node municipal road centerlines at intersections and create both directions.
+def build_graph(bbox=PILOT_BBOX):
+    """Download drivable OSM streets inside bbox and attach terrain risk to every edge.
 
-    The source has no one-way attribute, so both directions are assumed. This is
-    suitable for a prototype network comparison, not turn-by-turn navigation.
+    Only the largest strongly connected component is kept, so any two snapped
+    points always have a route between them (no dead-end islands).
     """
-    collection = json.loads(source_path.read_text(encoding="utf-8"))
-    south, west, north, east = PILOT_BBOX
-    clip = box(west, south, east, north)
-    lines = []
-    for feature in collection["features"]:
-        geom = shape(feature["geometry"]).intersection(clip)
-        if isinstance(geom, LineString) and geom.length:
-            lines.append(geom)
-        elif isinstance(geom, MultiLineString):
-            lines.extend(line for line in geom.geoms if line.length)
-    noded = unary_union(lines)
-    segments = []
-    stack = [noded]
-    while stack:
-        geom = stack.pop()
-        if isinstance(geom, LineString):
-            segments.extend(zip(list(geom.coords), list(geom.coords)[1:]))
-        elif hasattr(geom, "geoms"):
-            stack.extend(geom.geoms)
-
-    graph = nx.MultiDiGraph(crs="EPSG:4326", source="Municipio de Guayaquil Estructura Vial área urbana")
-    for first, second in segments:
-        lon1, lat1 = first[:2]
-        lon2, lat2 = second[:2]
-        if (lon1, lat1) == (lon2, lat2):
-            continue
-        u, v = _node_id(lon1, lat1), _node_id(lon2, lat2)
-        graph.add_node(u, x=float(lon1), y=float(lat1))
-        graph.add_node(v, x=float(lon2), y=float(lat2))
-        _, _, length = GEOD.inv(lon1, lat1, lon2, lat2)
-        midpoint = ((lat1 + lat2) / 2, (lon1 + lon2) / 2)
-        base = risk_at(*midpoint)
-        attrs = {"length": float(length), "risk_base": base, "risk_dyn": base, "risk_cost": float(length) * (1 + 10 * base)}
-        graph.add_edge(u, v, **attrs)
-        graph.add_edge(v, u, **attrs)
-    if graph.number_of_nodes() == 0:
-        raise ValueError("Municipal road layer produced an empty pilot graph.")
+    south, west, north, east = bbox
+    with tempfile.TemporaryDirectory() as tmp:
+        xml_path = Path(tmp) / "drive.osm"
+        _download_drive_xml(bbox, xml_path)
+        graph = ox.graph_from_xml(xml_path, simplify=True)
+    graph = ox.truncate.truncate_graph_bbox(graph, (west, south, east, north))
+    graph = ox.truncate.largest_component(graph, strongly=True)
+    for u, v, data in graph.edges(data=True):
+        data["risk_base"] = _edge_risk(graph, u, v, data)
     return graph
 
 
-def save_pilot_graph(graph, path=GRAPH_PATH):
-    import osmnx as ox
+def save_graph(graph, path=GRAPH_PATH):
     path.parent.mkdir(parents=True, exist_ok=True)
     ox.save_graphml(graph, path)
 
 
-def _node_id(lon, lat):
-    return f"{lon:.6f},{lat:.6f}"
+@lru_cache(maxsize=1)
+def load_graph():
+    """Load the stored graph (built and saved on first use if missing). Cached in memory."""
+    if not GRAPH_PATH.exists():
+        save_graph(build_graph())
+    return ox.load_graphml(GRAPH_PATH, edge_dtypes={"risk_base": float})
+
+
+def edge_coords(graph, u, v, data):
+    """Street shape of an edge as [[lat, lon], ...] from u to v."""
+    if "geometry" in data:
+        return [[lat, lon] for lon, lat in data["geometry"].coords]
+    return [[graph.nodes[u]["y"], graph.nodes[u]["x"]], [graph.nodes[v]["y"], graph.nodes[v]["x"]]]
+
+
+def _edge_risk(graph, u, v, data):
+    """Mean terrain risk sampled along the street shape."""
+    points = edge_coords(graph, u, v, data)
+    return sum(risk_at(lat, lon) for lat, lon in points) / len(points)
+
+
+def _download_drive_xml(bbox, out_path):
+    """Merge OSM API tiles into one .osm file holding only drivable ways and their nodes."""
+    south, west, north, east = bbox
+    nodes, ways = {}, {}
+    lat = south
+    while lat < north:
+        lon = west
+        while lon < east:
+            tile = (lat, lon, min(lat + TILE_DEG, north), min(lon + TILE_DEG, east))
+            for element in _fetch_tile(tile):
+                if element.tag == "node":
+                    nodes[element.get("id")] = element
+                elif element.tag == "way" and _is_drivable(element):
+                    ways[element.get("id")] = element
+            lon += TILE_DEG
+        lat += TILE_DEG
+    used = {nd.get("ref") for way in ways.values() for nd in way.iter("nd")}
+    root = ET.Element("osm", version="0.6")
+    root.extend(nodes[ref] for ref in used if ref in nodes)
+    root.extend(ways.values())
+    ET.ElementTree(root).write(out_path, encoding="utf-8", xml_declaration=True)
+
+
+def _fetch_tile(tile):
+    """Elements of one tile; splits the tile in four if the API says it holds too many nodes."""
+    south, west, north, east = tile
+    response = requests.get(OSM_API_MAP, params={"bbox": f"{west},{south},{east},{north}"},
+                            headers={"User-Agent": "DryGYE hackathon prototype"}, timeout=120)
+    if response.status_code == 400:
+        mid_lat, mid_lon = (south + north) / 2, (west + east) / 2
+        quarters = [(south, west, mid_lat, mid_lon), (south, mid_lon, mid_lat, east),
+                    (mid_lat, west, north, mid_lon), (mid_lat, mid_lon, north, east)]
+        return [element for quarter in quarters for element in _fetch_tile(quarter)]
+    response.raise_for_status()
+    return list(ET.fromstring(response.content))
+
+
+def _is_drivable(way):
+    tags = {tag.get("k"): tag.get("v") for tag in way.iter("tag")}
+    return (tags.get("highway") in DRIVE_HIGHWAYS
+            and tags.get("access") not in {"private", "no"}
+            and tags.get("area") != "yes")

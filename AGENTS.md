@@ -7,8 +7,8 @@ Este archivo (`AGENTS.md`) es el contexto compartido para cualquier asistente de
 - **Antes de las 15h00 del lunes 26-oct-2026 (hora Ecuador):** no escribas código del proyecto. Desde las 15h00 ya se puede desarrollar y hacer commits (regla 6.6).
 - **Commits:** usa la identidad git local de cada persona. Si tu herramienta agrega una línea de coautoría (`Co-Authored-By: ...`), déjala: es transparente con la regla 6.3. Revisa con `git log -1`. Todo se trabaja directo en `main` (no hay ramas por persona). Nunca hagas `push --force`.
 - **Idioma:** conversa con el equipo en español informal. Todo lo que se entrega va en **inglés**: código, comentarios, nombres, mensajes de commit, README, textos de la interfaz, propuesta y video (el jurado es de ESPOL y de Sri Sairam, India).
-- **El diseño técnico está en las secciones 11 a 16** (arquitectura, estructura de carpetas, contratos entre módulos, orden de construcción, reparto y prompts iniciales). Es una propuesta de partida: si el equipo la cambia, se actualiza ese texto. Respeta los contratos de la sección 13 para que los módulos de cada persona encajen.
-- **Trabaja solo en tu módulo** (sección 15), siempre en `main`. Si necesitas algo de otro módulo, usa su contrato o pídelo al compañero; no lo reescribas.
+- **El diseño técnico está en las secciones 11 a 16** (arquitectura, estructura de carpetas, contratos entre módulos, orden de construcción, reparto y prompts iniciales). Es una propuesta de partida: si el equipo la cambia, se actualiza ese texto. Respeta los contratos de la sección 13 para que los módulos encajen.
+- **Cualquiera puede trabajar en cualquier módulo** (sección 15), siempre en `main`. Si cambias un contrato de la sección 13, avisa al equipo y actualiza este archivo.
 - **Todos deben poder defender el código ante el jurado** (regla 6.4). Prefiere soluciones simples, funciones cortas y comentarios donde algo no sea obvio. Después de implementar algo no trivial, explica en 3 a 5 líneas, en español, cómo funciona.
 - **Originalidad (6.2):** no copies proyectos existentes. FRESH (Flask + OSMnx + Folium para rutas en inundación) y GeoRescue (FastAPI + GeoPandas + OSMnx, proyecto de hackathon) se pueden mirar como referencia de ideas, nunca copiar código. Se citan en la propuesta.
 - **Datos (6.5):** solo públicos, abiertos o sintéticos. Nada de datos personales: los reportes ciudadanos no guardan nombre ni teléfono.
@@ -154,7 +154,7 @@ Todo corre en local, en un solo proceso Flask. Sin base de datos: archivos en `d
 ```
  DEM (tif) --> terrain.py --> risk.tif (riesgo base 0..1)
                                   |
- roads municipales --> roads.py (grafo GraphML local, riesgo por arista) <--+
+ OSM --> roads.py (grafo GraphML local, riesgo por arista) <--+
                                   |
  Open-Meteo --> weather.py --+    |
  INOCAR PDF --> tides.py ----+--> alerts.py (nivel + factor dinámico)
@@ -188,13 +188,7 @@ Simulación: `simulation.py` crea de 8 a 12 sensores virtuales en puntos de ries
 
 **Funciones opcionales:** alertas por sector, reportes ciudadanos y varios sensores virtuales. Empezarlas solo después de integrar y probar el flujo completo de comparación de rutas. Si falta tiempo, recortarlas en ese orden.
 
-**Reparto sugerido para el equipo de tres:**
-
-| Integrante | Responsabilidad principal | Entrega verificable |
-|---|---|---|
-| Computación 1 | Datos geográficos, zona piloto y capa de riesgo | Capa que se carga y visualiza en la app |
-| Computación 2 | Red vial, cálculo de rutas e integración de interfaz | Comparación funcional de ruta rápida y ruta de menor riesgo |
-| Ciencia de Datos e IA | Indicador, validación, escenarios y comunicación de límites | Fórmula reproducible, validación disponible y explicación de supuestos |
+**Reparto:** no hay responsables fijos; cualquiera puede trabajar en cualquier módulo (sección 15).
 
 El equipo decide conjuntamente el alcance y cada persona debe poder explicar el flujo completo. No es necesario añadir aprendizaje automático: solo describir una función como IA si existe un modelo implementado, datos adecuados y una evaluación que el equipo pueda defender.
 
@@ -209,7 +203,7 @@ El equipo decide conjuntamente el alcance y cada persona debe poder explicar el 
 
 ### Estado implementado para la demo (26-oct-2026)
 
-- La zona piloto usa una red vial pública del Municipio/MIMG guardada en `data/processed/road_graph.graphml` (3,915 nodos, 8,374 aristas en el grafo generado; fragmentada en componentes). La fuente descargada tiene 173 segmentos dentro del bbox piloto y no informa sentidos únicos: se asumen calles bidireccionales. El botón «Load demo trip» usa dos puntos del componente conectado y muestra cuánto se ajustaron al grafo.
+- Las rutas usan la red vial de OpenStreetMap de la zona piloto, guardada en `data/processed/road_graph.graphml` (solo el mayor componente conexo, para que cualquier par de puntos tenga ruta). Las líneas siguen la forma de las calles y llegan hasta los puntos elegidos. El botón «Demo trip» carga el viaje de ejemplo.
 - Se pueden alternar 206 polígonos municipales de referencia de zonas inundables. Son antecedentes de estudios/eventos históricos, no cierres ni observaciones actuales. No se obtuvieron los 74 puntos vulnerables para validación.
 - La ruta demo, en «Heavy rain + high tide», produjo 2.843 km / 5.7 min para la más corta y 3.163 km / 6.3 min para menor costo estimado; riesgo medio 0.702 y 0.226 respectivamente. La alternativa aún incluye un segmento muy riesgoso y la interfaz avisa.
 - El parser de INOCAR generó 355 eventos para oct-dic de 2026; los cuatro eventos listados para el 26-oct coinciden con el PDF. El pronóstico conecta lluvia puntual Open-Meteo con la interpolación de marea INOCAR cuando hay cobertura temporal.
@@ -232,11 +226,11 @@ DryGYE/
   cache/        respuestas de Open-Meteo (ignorada por git)
   drygye/
     __init__.py  config.py
-    terrain.py  tides.py  validation.py        (Persona A)
-    roads.py  routing.py  reports.py           (Persona B)
-    weather.py  alerts.py  simulation.py       (Persona C)
+    terrain.py  tides.py  validation.py
+    roads.py  routing.py  reports.py
+    weather.py  alerts.py  simulation.py
   app/
-    app.py  templates/index.html  static/{app.js,style.css,leaflet.js,leaflet.css,images/} (Persona C, con B para el mapa)
+    app.py  templates/index.html  static/{app.js,style.css,leaflet.js,leaflet.css,images/}
   tests/        un archivo por módulo
   scripts/      build_data.py (genera todo lo de data/processed)
   docs/         proposal/ (borrador en inglés)
@@ -248,66 +242,63 @@ DryGYE/
 
 Coordenadas siempre `(lat, lon)` en EPSG:4326. Tiempos con zona `America/Guayaquil`. Todo en `drygye/config.py`: `BBOX`, `CITY_CENTER=(-2.19,-79.89)`, rutas de archivos, umbrales, pesos, `TIDE_HIGH_M=4.0`.
 
-- **terrain.py (A)**
+- **terrain.py**
   - `build_risk_raster(dem_path, out_path) -> None` escribe `risk.tif` (float32, 0..1, NaN en agua).
   - `risk_at(lat, lon) -> float` lee `risk.tif` (carga una vez, en memoria).
   - `risk_for_points(points: list[tuple]) -> list[float]` en lote.
-- **tides.py (A)**
+- **tides.py**
   - `parse_tide_pdf(pdf_path, out_csv) -> None`; `tides.csv` con columnas `datetime,height_m,kind` (`high`/`low`).
   - `tide_height_at(ts) -> float` interpola (coseno) entre eventos vecinos.
   - `is_high_tide(ts) -> bool` (altura >= `TIDE_HIGH_M`).
-- **validation.py (A)**: `validate(points_csv) -> dict` con porcentaje de puntos inundables en riesgo alto y comparación contra puntos aleatorios. `validation_points.csv`: `name,lat,lon,source,kind`.
-- **roads.py (B)**
-  - Construye y guarda el grafo piloto desde `data/raw/municipal_roads_pilot.geojson` a `data/processed/road_graph.graphml`; si el archivo ya existe, routing lo lee localmente. OSMnx queda como alternativa, no dependencia de la demo.
-  - La fuente municipal no incluye sentido vial; el prototipo trata aristas como bidireccionales y muestra límites de cobertura.
-- **routing.py (B)**
-  - `route(graph, origin, dest, factor: float, reports: list[dict], mode: str) -> dict`, con `mode` `"fast"` o `"safe"`; devuelve `{"coords": [[lat,lon],...], "length_m": float, "time_min": float, "max_risk": float, "mean_risk": float}`.
-  - `compare(graph, origin, dest, factor, reports) -> {"fast": ..., "safe": ...}`.
-- **reports.py (B)**: `add_report(lat, lon, note="") -> dict`, `active_reports() -> list[dict]`, caducan a las 3 h; persistencia en `data/reports.json` (sin datos personales).
-- **weather.py (C)**
+- **validation.py**: `validate(points_csv) -> dict` con porcentaje de puntos inundables en riesgo alto y comparación contra puntos aleatorios. `validation_points.csv`: `name,lat,lon,source,kind`.
+- **roads.py**
+  - `build_graph(bbox=PILOT_BBOX)` baja las calles para autos de OpenStreetMap de la zona piloto desde la API principal de OSM, en cuadros de 0,02° (Overpass suele no responder), arma el grafo con `osmnx.graph_from_xml`, conserva solo el mayor componente fuertemente conexo (toda pareja de puntos tiene ruta) y guarda en cada arista `risk_base` (promedio del riesgo del terreno a lo largo de la calle).
+  - `load_graph() -> networkx.MultiDiGraph` lee `data/processed/road_graph.graphml` (si no existe, lo construye y lo guarda) y lo deja en memoria. Regenerar con internet: `python scripts/build_road_graph.py`.
+  - `edge_coords(graph, u, v, data) -> [[lat, lon], ...]` forma real de la calle.
+- **routing.py**
+  - `compare_routes(origin, destination, state) -> {"fast": ..., "safe": ..., "alternatives": [...], "snapping": {"origin_m", "destination_m"}, "warning": str|None}`. Las alternativas (hasta 2) salen del método de penalización: se encarecen las calles de las rutas ya encontradas y se busca otra vez; se descartan las que comparten más del 70 % del recorrido; `state` viene de `alerts` (usa `level` y `factor`).
+  - Cada ruta: `{"coords": [[lat,lon],...], "length_m", "time_min", "mean_risk", "max_risk"}`. `coords` empieza y termina en los puntos que eligió el usuario y sigue la forma de las calles.
+- **reports.py**: `add_report(lat, lon, note="") -> dict`, `active_reports() -> list[dict]`, caducan a las 3 h; persistencia en `data/reports.json` (sin datos personales).
+- **weather.py**
   - `get_forecast(force_refresh=False) -> dict` con series horarias de precipitación, probabilidad y temperatura para el punto central de Guayaquil; usa caché de 60 min y caché anterior si falla la red.
   - `forecast_summary(data) -> dict` devuelve acumulados de 3/24 h y las próximas 12 horas para la interfaz.
-- **alerts.py (C)**
+- **alerts.py**
   - `current_state(scenario) -> dict` calcula alertas para un escenario sintético de lluvia y marea.
   - `forecast_state(rain_24h, tide_m=None) -> dict` calcula alertas y el factor de ruta con lluvia puntual y marea opcional de INOCAR.
   - `sector_levels(state) -> list[dict]`.
-- **simulation.py (C)**: `SCENARIOS`, `simulate(scenario, minutes) -> dict` (serie de lluvia sintética y nivel por sensor virtual), `virtual_sensors() -> list[dict]`.
+- **simulation.py**: `SCENARIOS`, `simulate(scenario, minutes) -> dict` (serie de lluvia sintética y nivel por sensor virtual), `virtual_sensors() -> list[dict]`.
 - **app (C + B)**: rutas Flask `GET /` (mapa), `GET /api/state?mode=simulation|forecast&scenario=`, `GET /api/weather` (pronóstico horario), `GET /api/risk`, `GET /api/reference/roads`, `GET /api/reference/flood-zones`, `GET /api/route?from=lat,lon&to=lat,lon&mode=simulation|forecast&scenario=`. Los recursos Leaflet se sirven localmente; las teselas de fondo son externas. JSON en inglés. En modo forecast, lluvia puntual y marea INOCAR (si la tabla cubre la hora) modifican el factor de ruta.
 
 ## 14. Orden de construcción (hitos con hora)
 
 1. **15h00–15h30** — Todos: leer este archivo, `python check_env.py`, crear `config.py`, primer commit en `main` con la plantilla y `data/raw/`.
-2. **15h30–16h30 (Hito 1)** — A: `risk.tif` y `tides.csv` listos y subidos. B: grafo en caché y ruta rápida vs ruta con riesgo ficticio constante. C: esqueleto Flask con mapa base y `/api/state` con valores de prueba. Todo queda integrado en `main`.
-3. **16h30–18h00 (Hito 2)** — A: validación contra los puntos y ajuste de pesos. B: riesgo por arista desde `risk.tif`, `compare()` y reportes. C: Open-Meteo con caché, `alerts`, mapa con capa de riesgo y selector de ruta.
-4. **18h00–19h00 (Hito 3)** — C: simulación, escenarios y banner. B: ruta en el mapa con rápida vs segura. A: número de validación y tabla de límites para la propuesta; inicia el borrador del PDF.
+2. **15h30–16h30 (Hito 1)** — Datos y riesgo: `risk.tif` y `tides.csv` listos y subidos. Calles y rutas: grafo en caché y ruta rápida vs ruta con riesgo ficticio constante. Alertas y web: esqueleto Flask con mapa base y `/api/state` con valores de prueba. Todo queda integrado en `main`.
+3. **16h30–18h00 (Hito 2)** — Datos y riesgo: validación contra los puntos y ajuste de pesos. Calles y rutas: riesgo por arista desde `risk.tif`, `compare()` y reportes. Alertas y web: Open-Meteo con caché, `alerts`, mapa con capa de riesgo y selector de ruta.
+4. **18h00–19h00 (Hito 3)** — Alertas y web: simulación, escenarios y banner. Calles y rutas: ruta en el mapa con rápida vs segura. Datos y riesgo: número de validación y tabla de límites para la propuesta; inicia el borrador del PDF.
 5. **19h00–19h30** — Integración, ensayo de la demo completa sin internet (apagar el wifi y probar). **19h30: congelar funciones.**
 6. **19h30–20h45** — Propuesta PDF en inglés, video de 3 min, README, repo público, entrega.
 
 Si algo se atrasa, se recorta en este orden: reportes ciudadanos, sectores en alertas, escenarios extra. Lo que nunca se recorta: mapa de riesgo, ruta rápida vs segura, alertas, simulación etiquetada.
 
-## 15. Reparto
+## 15. Organización del equipo
 
-| Persona | Módulos | Entrega a otros |
-|---|---|---|
-| **A: datos y riesgo** | `terrain.py`, `tides.py`, `validation.py`, `scripts/build_data.py`, `data/validation_points.csv` | `risk.tif`, `tides.csv`, número de validación |
-| **B: calles y rutas** | `roads.py`, `routing.py`, `reports.py` | rutas `/api/route`, `/api/report` |
-| **C: alertas, simulación y web** | `weather.py`, `alerts.py`, `simulation.py`, `app/` | `/api/state`, `/api/sensors`, la interfaz |
+No hay reparto fijo por persona: cualquiera puede trabajar en cualquier módulo. Para no pisarse, avisar en el chat del equipo qué archivo se está editando antes de empezar y hacer commits chicos.
 
-Reglas de git: todos trabajan directo en `main`, sin ramas por persona ni PRs. Commits chicos y frecuentes (al menos al cumplir cada hito); `git pull --rebase` antes de cada `git push` y, si hay conflicto, se resuelve con el compañero dueño de ese archivo; nunca `push --force`; cada quien solo toca sus carpetas (si necesitas cambiar `config.py`, avisa). Si alguien se atasca en algo, se le pasa a quien termine primero. Da igual qué herramienta use cada quien: los contratos de la sección 13 son lo que hace que todo encaje.
+Reglas de git: todos trabajan directo en `main`, sin ramas por persona ni PRs. Commits chicos y frecuentes (al menos al cumplir cada hito); `git pull --rebase` antes de cada `git push` y, si hay conflicto, se resuelve con quien editó ese archivo; nunca `push --force`. Si se cambia un contrato de la sección 13 o `config.py`, avisar al equipo y actualizar este archivo. Si alguien se atasca en algo, se le pasa a quien termine primero.
 
-## 16. Prompts iniciales (cada persona pega el suyo en su asistente, con este archivo ya abierto o pegado)
+## 16. Prompts iniciales (quien tome una tarea pega su prompt en su asistente, con este archivo ya abierto o pegado)
 
 **Todos, primero:** «Lee CLAUDE.md completo. Corre `python check_env.py` y dime si el entorno está bien. Crea `drygye/config.py` según la sección 13 con BBOX del DEM, rutas de archivos y umbrales (solo constantes). Después espera mi siguiente instrucción.»
 
-**Persona A:** «Soy la Persona A (datos y riesgo); trabajo en `main`. Implementa `drygye/terrain.py` según el contrato de la sección 13: calcula HAND con pysheds (o, si tarda mucho, la diferencia de altura al agua más cercana con `scipy.ndimage.distance_transform_edt`), distancia al agua y pendiente, y combina con la fórmula de la sección 11. Agua = DEM <= 0. Escribe `data/processed/risk.tif`. Añade `tests/test_terrain.py` con un DEM sintético pequeño. Luego `tides.py`: parsear `data/raw/GUAYAQUIL_RIO_4.pdf` con pdfplumber (ver sección 5 para el formato y el ejemplo del 26-oct como prueba) a `tides.csv`. Explícame en 3 a 5 líneas cómo funciona cada cosa, porque debo defenderla.»
+**Datos y riesgo:** «Trabajo en `main`. Implementa `drygye/terrain.py` según el contrato de la sección 13: calcula HAND con pysheds (o, si tarda mucho, la diferencia de altura al agua más cercana con `scipy.ndimage.distance_transform_edt`), distancia al agua y pendiente, y combina con la fórmula de la sección 11. Agua = DEM <= 0. Escribe `data/processed/risk.tif`. Añade `tests/test_terrain.py` con un DEM sintético pequeño. Luego `tides.py`: parsear `data/raw/GUAYAQUIL_RIO_4.pdf` con pdfplumber (ver sección 5 para el formato y el ejemplo del 26-oct como prueba) a `tides.csv`. Explícame en 3 a 5 líneas cómo funciona cada cosa, porque debo defenderla.»
 
-**Persona B:** «Soy la Persona B (calles y rutas); trabajo en `main`. Implementa `drygye/roads.py`: baja con OSMnx el grafo de calles transitables para autos dentro de BBOX (si es muy grande, usa los 5 distritos centrales y norte primero), guárdalo en GraphML en `data/processed/` y cárgalo desde disco. Luego `routing.py` con `route()` y `compare()` según la sección 13 y la fórmula de costo de la sección 11; mientras no exista `risk.tif`, usa un riesgo falso aleatorio por arista con una bandera clara en el código. Añade tests con un grafo pequeño de networkx. Después `reports.py`. Explícame cómo funciona cada cosa.»
+**Calles y rutas:** «Trabajo en `main`. Implementa `drygye/roads.py`: baja con OSMnx el grafo de calles transitables para autos dentro de BBOX (si es muy grande, usa los 5 distritos centrales y norte primero), guárdalo en GraphML en `data/processed/` y cárgalo desde disco. Luego `routing.py` con `route()` y `compare()` según la sección 13 y la fórmula de costo de la sección 11; mientras no exista `risk.tif`, usa un riesgo falso aleatorio por arista con una bandera clara en el código. Añade tests con un grafo pequeño de networkx. Después `reports.py`. Explícame cómo funciona cada cosa.»
 
-**Persona C:** «Soy la Persona C (alertas, simulación y web); trabajo en `main`. Crea la app Flask de la sección 13 con un mapa Leaflet (usa folium solo si ayuda), `/api/state` con valores de prueba al inicio, selector de modo «real/simulation» y de escenario, y un banner fijo «SIMULATION MODE» cuando aplique. Pie de página con las atribuciones: «Weather data by Open-Meteo.com», «© OpenStreetMap contributors», Copernicus DEM. Luego `weather.py` con Open-Meteo, caché en disco y plan B offline, y `alerts.py` con los umbrales de la sección 11. Interfaz en inglés. Explícame cómo funciona cada cosa.»
+**Alertas, simulación y web:** «Trabajo en `main`. Crea la app Flask de la sección 13 con un mapa Leaflet (usa folium solo si ayuda), `/api/state` con valores de prueba al inicio, selector de modo «real/simulation» y de escenario, y un banner fijo «SIMULATION MODE» cuando aplique. Pie de página con las atribuciones: «Weather data by Open-Meteo.com», «© OpenStreetMap contributors», Copernicus DEM. Luego `weather.py` con Open-Meteo, caché en disco y plan B offline, y `alerts.py` con los umbrales de la sección 11. Interfaz en inglés. Explícame cómo funciona cada cosa.»
 
 ## 17. Antes de entregar
 
 - Probar la demo sin internet y con el escenario «Heavy rain + high tide».
 - Que `README.md` tenga: qué es, cómo instalar (`setup_env.bat`), cómo correr la app, datos y atribuciones, límites (sección 6) y herramientas declaradas (sección 9).
 - Repo público, probado en una ventana de incógnito.
-- Cada persona puede explicar el flujo completo y su módulo.
+- Cada persona puede explicar el flujo completo y cualquier módulo.
