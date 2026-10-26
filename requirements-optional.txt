@@ -1,0 +1,2 @@
+# Optional extras, deferred by the team. Installed only with -WithTelegram / --with-telegram.
+python-telegram-bot>=21

@@ -1,0 +1,21 @@
+# DryGYE - pip fallback (used with setup_env.ps1 -Mode venv / setup_env.sh --venv).
+# The primary path is conda (environment.yml). Keep both lists in sync.
+numpy
+pandas
+scipy
+networkx
+shapely>=2.0
+pyproj
+geopandas>=1.0
+rasterio
+osmnx>=2.0
+pysheds
+matplotlib
+folium
+requests
+pdfplumber
+flask
+python-dotenv
+pyyaml
+pytest
+ipykernel
